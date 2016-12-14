@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
+using System.Diagnostics;
 
 namespace rgr
 {
@@ -13,61 +15,6 @@ namespace rgr
         /// using for rounding approximation results in Math.Round()
         /// </summary>
         private static int r_count = 3;
-        /// <summary>
-        /// Determinant of 2x2 matrix
-        /// </summary>
-        /// <param name="matrix">
-        /// 2x2 matrix
-        /// </param>
-        /// <returns>
-        /// determinant value
-        /// </returns>
-        private static double det_2_2(double[][] matrix)
-        {
-            return matrix[0][0] * matrix[1][1] - matrix[1][0] * matrix[0][1];
-        }
-        /// <summary>
-        /// Calculates roots of a system of linear equations
-        /// with 2 unknowns using Kramer's rule
-        /// </summary>
-        /// <param name="matrix">
-        /// martix in form (A|B) with size 2 rows x 3 cols
-        /// where A is matrix of coefficients near unknowns,
-        /// B is vector of right part of system
-        /// </param>
-        /// <returns>
-        /// array with 2 roots of current system
-        /// </returns>
-        private static double[] kramer_2(double[][] matrix)
-        {
-            double[][] matrix_det = new double[2][]
-            {
-                new double[2] {matrix[0][0], matrix[0][1]},
-                new double[2] {matrix[1][0], matrix[1][1]},
-            };
-            double det = det_2_2(matrix_det);
-
-            double[][] matrix_det_1 = new double[2][]
-            {
-                new double[2] {matrix[0][2], matrix[0][1]},
-                new double[2] {matrix[1][2], matrix[1][1]},
-            };
-            double det_1 = det_2_2(matrix_det_1);
-
-            double[][] matrix_det_2 = new double[2][]
-            {
-                new double[2] {matrix[0][0], matrix[0][2]},
-                new double[2] {matrix[1][0], matrix[1][2]},
-            };
-            double det_2 = det_2_2(matrix_det_2);
-
-            double[] solutions = new double[2] {
-                det_1 / det,
-                det_2 / det
-            };
-
-            return solutions;
-        }
         /// <summary>
         /// Calculation the coefficients a1, a0 for linear approximation F(x) = a1*x + a0
         /// of method of least squeres
@@ -88,13 +35,10 @@ namespace rgr
                 sum_x_y += x[i] * y[i];
             }
 
-            double[][] matrix = new double[2][]
-            {
-                new double[3] {sum_x_x, sum_x, sum_x_y},
-                new double[3] {sum_x, n, sum_y},
-            };
+            double a1 = (n*sum_x_y - sum_x*sum_y) / (n*sum_x_x - Math.Pow(sum_x, 2));
+            double a0 = (sum_y*sum_x_x - sum_x_y*sum_x) / (n * sum_x_x - Math.Pow(sum_x, 2));
 
-            return kramer_2(matrix);
+            return new double[] { a1, a0 };
         }
         /// <summary>
         /// Logarithmic approximation method of least squares
@@ -150,6 +94,23 @@ namespace rgr
                 x0, Math.Round(a, r_count), Math.Round(b, r_count), Math.Round(result, r_count));
             Console.WriteLine(msg);
         }
+        /// <summary>
+        /// Runs context with run time measurement
+        /// </summary>
+        /// <param name="msg">Message before running context</param>
+        /// <param name="context">function (delegate) without return values and arguments</param>
+        public static void stopwatch_context(String msg, Action context)
+        {
+            Stopwatch StopWatch = new Stopwatch();
+
+            Console.WriteLine(msg);
+            StopWatch.Start();
+
+            context();
+
+            StopWatch.Stop();
+            Console.WriteLine(string.Concat("\nRunTime ", StopWatch.Elapsed.Milliseconds.ToString(), " ms\n"));
+        }
         static void Main(string[] args)
         {
             double[] x = { 1, 2, 3, 4, 5 };
@@ -157,11 +118,29 @@ namespace rgr
 
             //test for logarithmic approximation
             double[] y1 = { 0.0, 0.69, 1.1, 1.4, 1.6 };
-            logarithmic_approximation(x, y1, x0);
 
             //test for power approximation
             double[] y2 = { 0.6, 1.8, 5.5, 9.9, 18.2 };
-            power_approximation(x, y2, x0);
+
+            stopwatch_context(
+                "Calculating without threads\n",
+                () => {
+                    logarithmic_approximation(x, y1, x0);
+                    power_approximation(x, y2, x0);
+                });
+
+            stopwatch_context(
+                "Calculating with threads\n",
+                () => {
+                    Thread t1 = new Thread(() => logarithmic_approximation(x, y1, x0));
+                    Thread t2 = new Thread(() => power_approximation(x, y2, x0));
+
+                    t1.Start();
+                    t2.Start();
+
+                    t1.Join();
+                    t2.Join();
+                });
 
             Console.ReadLine();
         }
