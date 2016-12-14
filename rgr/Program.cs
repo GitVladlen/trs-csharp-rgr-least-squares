@@ -107,6 +107,10 @@ namespace rgr
             StopWatch.Stop();
             Console.WriteLine(string.Concat("\nRunTime ", StopWatch.Elapsed.Milliseconds.ToString(), " ms\n"));
         }
+        /// <summary>
+        /// Entire point to the program
+        /// </summary>
+        /// <param name="args">shell arguments</param>
         static void Main(string[] args)
         {
             double[] x = { 1, 2, 3, 4, 5 };
